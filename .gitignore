@@ -1,0 +1,9 @@
+# Sensitive config files
+config.php
+google_auth.php
+.env
+
+# System files
+node_modules/
+.DS_Store
+Thumbs.db
