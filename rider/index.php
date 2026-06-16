@@ -39,9 +39,13 @@ try {
     $lifetime_stmt->execute([$rider_id]);
     $lifetime_count = $lifetime_stmt->fetch()['total'] ?? 0;
 
-    // 5. Fetch ASSIGNED Orders (New tasks)
+    // 5. FETCH ASSIGNED: Query using 'p.food_name' (BUG FIXED)
     $new_tasks_stmt = $conn->prepare("
-        SELECT o.*, u.name as customer, u.phone as customer_phone, v.shop_name 
+        SELECT o.*, u.name as customer, u.phone as customer_phone, v.shop_name,
+               (SELECT GROUP_CONCAT(CONCAT(oi.quantity, 'x ', p.food_name) SEPARATOR ', ') 
+                FROM order_items oi 
+                INNER JOIN products p ON oi.product_id = p.id 
+                WHERE oi.order_id = o.id) as ordered_items
         FROM orders o 
         LEFT JOIN users u ON o.user_id = u.id 
         LEFT JOIN vendors v ON o.vendor_id = v.id
@@ -51,9 +55,13 @@ try {
     $new_tasks_stmt->execute([$rider_id]);
     $new_tasks = $new_tasks_stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // 6. Fetch ACTIVE Orders (Out for delivery)
+    // 6. FETCH ACTIVE: Query using 'p.food_name' (BUG FIXED)
     $active_stmt = $conn->prepare("
-        SELECT o.*, u.name as customer, u.phone as customer_phone, v.shop_name 
+        SELECT o.*, u.name as customer, u.phone as customer_phone, v.shop_name,
+               (SELECT GROUP_CONCAT(CONCAT(oi.quantity, 'x ', p.food_name) SEPARATOR ', ') 
+                FROM order_items oi 
+                INNER JOIN products p ON oi.product_id = p.id 
+                WHERE oi.order_id = o.id) as ordered_items
         FROM orders o 
         LEFT JOIN users u ON o.user_id = u.id 
         LEFT JOIN vendors v ON o.vendor_id = v.id
@@ -147,8 +155,16 @@ try {
                                 <span class="text-slate-300 font-bold text-[10px]">#<?= $task['id'] ?></span>
                             </div>
                             
-                            <h3 class="text-xl font-black text-slate-900 mb-4"><?= htmlspecialchars($task['shop_name']) ?></h3>
+                            <h3 class="text-xl font-black text-slate-900 mb-1"><?= htmlspecialchars($task['shop_name'] ?? 'Restaurant') ?></h3>
+                            <p class="text-xs font-bold text-orange-500 mb-4">LKR <?= number_format($task['total_amount'], 2) ?></p>
                             
+                            <div class="bg-slate-50/70 p-4 rounded-2xl border border-slate-100 mb-4">
+                                <p class="text-[9px] font-black text-slate-400 uppercase mb-2 tracking-wider"><i class="fa-solid fa-utensils mr-1"></i> Order Items</p>
+                                <p class="text-xs font-bold text-slate-700 leading-relaxed">
+                                    <?= !empty($task['ordered_items']) ? htmlspecialchars($task['ordered_items']) : '<span class="text-slate-400 italic">No items found</span>' ?>
+                                </p>
+                            </div>
+
                             <div class="space-y-3 mb-6">
                                 <div class="flex items-start gap-3">
                                     <div class="w-8 h-8 bg-slate-50 rounded-lg flex items-center justify-center text-slate-400 shrink-0 mt-1">
@@ -204,12 +220,23 @@ try {
             <div class="space-y-5">
                 <?php foreach($active_tasks as $active): ?>
                     <div class="bg-slate-900 rounded-[2.8rem] p-7 shadow-2xl relative overflow-hidden">
-                        <div class="flex items-center gap-2 mb-4">
-                            <span class="w-2 h-2 bg-green-500 rounded-full status-pulse"></span>
-                            <p class="text-orange-500 text-[9px] font-black uppercase tracking-[0.2em]">Live Tracking</p>
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="flex items-center gap-2">
+                                <span class="w-2 h-2 bg-green-500 rounded-full status-pulse"></span>
+                                <p class="text-orange-500 text-[9px] font-black uppercase tracking-[0.2em]">Live Tracking</p>
+                            </div>
+                            <span class="text-white/40 font-bold text-[10px]">#<?= $active['id'] ?></span>
                         </div>
                         
-                        <h3 class="text-white text-xl font-black mb-6 uppercase tracking-tight"><?= htmlspecialchars($active['customer']) ?></h3>
+                        <h3 class="text-white text-xl font-black mb-1 uppercase tracking-tight"><?= htmlspecialchars($active['customer']) ?></h3>
+                        <p class="text-sm font-black text-orange-500 mb-4">LKR <?= number_format($active['total_amount'], 2) ?></p>
+
+                        <div class="bg-white/5 p-4 rounded-2xl border border-white/10 mb-6">
+                            <p class="text-[9px] font-black text-slate-400 uppercase mb-2 tracking-wider"><i class="fa-solid fa-utensils mr-1"></i> Carrying Items</p>
+                            <p class="text-xs font-bold text-slate-200 leading-relaxed">
+                                <?= !empty($active['ordered_items']) ? htmlspecialchars($active['ordered_items']) : '<span class="text-slate-500 italic">No items found</span>' ?>
+                            </p>
+                        </div>
                         
                         <div class="space-y-4 mb-8">
                             <div class="flex items-start gap-3">

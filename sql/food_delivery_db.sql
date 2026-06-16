@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: May 15, 2026 at 07:30 AM
+-- Generation Time: Jun 16, 2026 at 02:41 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -56,14 +56,6 @@ CREATE TABLE `orders` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
---
--- Dumping data for table `orders`
---
-
-INSERT INTO `orders` (`id`, `phone`, `address`, `subtotal`, `delivery_fee`, `user_id`, `vendor_id`, `rider_id`, `total_amount`, `status`, `whatsapp_notified`, `order_date`, `created_at`) VALUES
-(49, '0786347437', '539,Ladies Market Road,Eravur,Sri Lanka', 8500.00, 100.00, 15, NULL, NULL, 8600.00, 'pending', 0, '2026-04-23 21:47:02', '2026-04-23 21:47:02'),
-(50, '0786347437', '539,Ladies Market Road,Eravur,Sri Lanka', 300.00, 100.00, 15, NULL, 17, 400.00, 'assigned', 0, '2026-04-23 21:52:33', '2026-04-23 21:52:33');
-
 -- --------------------------------------------------------
 
 --
@@ -77,14 +69,6 @@ CREATE TABLE `order_items` (
   `quantity` int(11) NOT NULL,
   `price_at_time` decimal(10,2) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Dumping data for table `order_items`
---
-
-INSERT INTO `order_items` (`id`, `order_id`, `product_id`, `quantity`, `price_at_time`) VALUES
-(37, 49, 3, 1, 8500.00),
-(38, 50, 10, 1, 300.00);
 
 -- --------------------------------------------------------
 
@@ -209,7 +193,8 @@ INSERT INTO `users` (`id`, `name`, `email`, `phone`, `address`, `password`, `goo
 (10, 'Mohamed Aflal', 'mohamedaflal154@gmail.com', '0786347437', NULL, '$2y$10$9Kn3W.dFQCZ81pWhxOzfwunlhEy.rSP9l9ozsN/XNFrVSmMPDxJLu', '112815844583861170347', 'admin', '2026-04-20 04:37:27', NULL, 1, 'active'),
 (14, 'Mohamed Aflal', 'shadowaflal@gmail.com', '0786347437', NULL, '$2y$10$donJ096x0e.sV8gedGsKyuWvdyL76Bb/zUTS6Ot7p.R8RHgkjM1l.', '100610098463364222793', 'rider', '2026-04-20 05:26:33', NULL, 1, 'active'),
 (15, 'Mohamed Aflal', 'aflalmuhammathu@gmail.com', '0786347437', NULL, '$2y$10$VW.dkOiesg.eTkqXutl3.Ofb9E2Tk0k9BXMQ58tf0MxdyDvK/lmoe', NULL, '', '2026-04-20 06:00:34', '28477dda9b58ab34b114e2cf57310b9a', 1, 'active'),
-(17, 'Firsath', 'mohamedrizxtar@gmail.com', '0772039389', NULL, '$2y$10$oPXxzNLChXRCUPRN3I8cDOlJMEwRrq54EqLmLw/AXA4ckHivYSL0W', NULL, 'rider', '2026-04-20 14:01:38', '849f937747aee4a7364374ee9ce70a7b', 1, 'active');
+(17, 'Firsath', 'mohamedrizxtar@gmail.com', '0772039389', NULL, '$2y$10$oPXxzNLChXRCUPRN3I8cDOlJMEwRrq54EqLmLw/AXA4ckHivYSL0W', NULL, 'rider', '2026-04-20 14:01:38', '849f937747aee4a7364374ee9ce70a7b', 1, 'active'),
+(18, 'Administrator', 'admin@gmail.com', '0771234567', 'Admin Address', '$2a$12$Q6gHVDy.IuOvtHCuvCgLv.vPxZJHa9WZH8KzETGXnwYJkQBjl43fi', NULL, 'admin', '2026-06-16 12:38:08', NULL, 1, 'active');
 
 -- --------------------------------------------------------
 
@@ -343,7 +328,7 @@ ALTER TABLE `riders`
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=18;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=19;
 
 --
 -- AUTO_INCREMENT for table `vendors`

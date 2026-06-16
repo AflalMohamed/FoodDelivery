@@ -14,34 +14,39 @@ if (isset($_POST['assign_rider'])) {
     $order_id = $_POST['order_id'];
     $rider_id = $_POST['rider_id'];
 
-    $stmt = $conn->prepare("UPDATE orders SET rider_id = ?, status = 'assigned' WHERE id = ?");
-    if ($stmt->execute([$rider_id, $order_id])) {
-        
-        $riderStmt = $conn->prepare("SELECT name AS rider_name, phone FROM users WHERE id = ? AND role = 'rider'");
-        $riderStmt->execute([$rider_id]);
-        $riderData = $riderStmt->fetch();
+    // Double-check verification barrier: Active riders are allowed to handle delivery dispatches
+    $checkRider = $conn->prepare("SELECT id FROM users WHERE id = ? AND role = 'rider' AND status = 'active' AND is_verified = 1");
+    $checkRider->execute([$rider_id]);
 
-        if ($riderData && !empty($riderData['phone'])) {
-            $r_name = $riderData['rider_name'];
-            $raw_phone = preg_replace('/[^0-9]/', '', $riderData['phone']);
-            $clean_phone = (str_starts_with($raw_phone, '0')) ? '94'.ltrim($raw_phone, '0') : $raw_phone;
+    if ($checkRider->rowCount() > 0) {
+        $stmt = $conn->prepare("UPDATE orders SET rider_id = ?, status = 'assigned' WHERE id = ?");
+        if ($stmt->execute([$rider_id, $order_id])) {
             
-            $msg_body = "🔔 *NEW ORDER ASSIGNED*\nHello $r_name, Order #$order_id is assigned to you. Drive safe!";
-            $whatsapp_url = "https://wa.me/$clean_phone?text=" . rawurlencode($msg_body);
-            $success = "Assigned to $r_name!";
+            $riderStmt = $conn->prepare("SELECT name AS rider_name, phone FROM users WHERE id = ? AND role = 'rider'");
+            $riderStmt->execute([$rider_id]);
+            $riderData = $riderStmt->fetch();
+
+            if ($riderData && !empty($riderData['phone'])) {
+                $r_name = $riderData['rider_name'];
+                $raw_phone = preg_replace('/[^0-9]/', '', $riderData['phone']);
+                $clean_phone = (str_starts_with($raw_phone, '0')) ? '94'.ltrim($raw_phone, '0') : $raw_phone;
+                
+                $msg_body = "🔔 *NEW ORDER ASSIGNED*\nHello $r_name, Order #$order_id is assigned to you. Drive safe!";
+                $whatsapp_url = "https://wa.me/$clean_phone?text=" . rawurlencode($msg_body);
+                $success = "Assigned to $r_name!";
+            }
         }
+    } else {
+        $error = "Cannot assign order! This rider profile is currently pending activation or deactivated.";
     }
 }
 
 // --- LOGIC: Handle Order Deletion ---
 if (isset($_POST['delete_order'])) {
     $order_id = $_POST['order_id'];
-    // Transaction use pannuvathu nallathu order items-um delete aaha
     try {
         $conn->beginTransaction();
-        // First delete items if any (optional but recommended)
         $conn->prepare("DELETE FROM order_items WHERE order_id = ?")->execute([$order_id]);
-        // Then delete the order
         $stmt = $conn->prepare("DELETE FROM orders WHERE id = ?");
         if ($stmt->execute([$order_id])) {
             $conn->commit();
@@ -60,7 +65,9 @@ try {
     $stmtOrders = $conn->query("SELECT o.*, u.name as customer, 'N/A' as order_date FROM orders o JOIN users u ON o.user_id = u.id ORDER BY o.id DESC");
 }
 $orders = $stmtOrders->fetchAll();
-$riders = $conn->query("SELECT id, name FROM users WHERE role = 'rider'")->fetchAll();
+
+// CORE BUG FIX: Fetch only fully verified and active riders for order assignment
+$riders = $conn->query("SELECT id, name FROM users WHERE role = 'rider' AND status = 'active' AND is_verified = 1")->fetchAll();
 ?>
 
 <!DOCTYPE html>
@@ -123,6 +130,12 @@ $riders = $conn->query("SELECT id, name FROM users WHERE role = 'rider'")->fetch
                     <?php if($whatsapp_url): ?>
                         <a href="<?= $whatsapp_url ?>" target="_blank" class="bg-white text-emerald-600 px-4 py-2 rounded-lg text-[10px] font-black uppercase">Open WhatsApp</a>
                     <?php endif; ?>
+                </div>
+            <?php endif; ?>
+
+            <?php if($error): ?>
+                <div class="bg-red-500 text-white p-4 mb-6 rounded-2xl flex items-center justify-between shadow-lg">
+                    <span class="text-xs font-black uppercase italic tracking-tighter"><i class="fa-solid fa-triangle-exclamation mr-2"></i><?= $error ?></span>
                 </div>
             <?php endif; ?>
 

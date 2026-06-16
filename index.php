@@ -21,6 +21,19 @@ if(isset($_SESSION['cart'])) {
 
 include 'includes/header.php'; 
 
+// --- DYNAMIC AI FAST MOVING ITEMS ENGINE BLOCK ---
+// Computes and selects product line aggregates based on operational data statistics inside database architecture
+$fast_moving_stmt = $conn->query("
+    SELECT p.*, v.shop_name, COUNT(oi.id) as total_sales
+    FROM order_items oi
+    INNER JOIN products p ON oi.product_id = p.id
+    LEFT JOIN vendors v ON p.vendor_id = v.id
+    GROUP BY p.id
+    ORDER BY total_sales DESC
+    LIMIT 4
+");
+$fast_moving_products = $fast_moving_stmt->fetchAll(PDO::FETCH_ASSOC);
+
 // 2. Logic (Index: Biriyani items and filters)
 $search = $_GET['search'] ?? '';
 $cat_filter = $_GET['category'] ?? '';
@@ -107,15 +120,50 @@ $categories = ['Biriyani', 'Fast Food', 'Drinks', 'Snacks', 'Desserts'];
 
         #imagePreviewModal, #orderModal { display: none; position: fixed; inset: 0; z-index: 1000; background: rgba(0,0,0,0.9); backdrop-filter: blur(8px); align-items: center; justify-content: center; }
         
-        /* Modal Body Styling */
         .modal-body {
             background: white; width: 100%; max-width: 400px; border-radius: 2.5rem;
             padding: 30px; animation: modalSlide 0.3s ease-out;
         }
         @keyframes modalSlide { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+        /* LIVE CHAT BOT WIDGET ELEMENT ENGINE */
+        .chatbot-container { position: fixed; bottom: 105px; right: 20px; z-index: 999; width: 350px; max-height: 450px; background: white; border-radius: 2rem; box-shadow: 0 20px 40px rgba(15,23,42,0.15); display: none; flex-direction: column; border: 1px solid #f1f5f9; overflow: hidden; transition: 0.3s; }
+        .chatbot-header { background: var(--dark); color: white; padding: 18px 20px; display: flex; justify-content: space-between; align-items: center; }
+        .chatbot-messages { flex-grow: 1; padding: 15px; overflow-y: auto; background: #f8fafc; font-size: 12px; display: flex; flex-direction: column; gap: 10px; }
+        .msg-bubble { padding: 10px 14px; border-radius: 1.2rem; max-width: 80%; line-height: 1.4; word-wrap: break-word; white-space: pre-line; }
+        .msg-bot { background: white; color: var(--dark); align-self: flex-start; border-bottom-left-radius: 0.2rem; border: 1px solid #e2e8f0; }
+        .msg-user { background: var(--primary); color: white; align-self: flex-end; border-bottom-right-radius: 0.2rem; }
+        .chatbot-input-area { display: flex; padding: 10px; border-top: 1px solid #f1f5f9; background: white; }
+        .chatbot-input-area input { flex-grow: 1; padding: 10px 15px; border-radius: 1rem; border: 1px solid #e2e8f0; outline: none; font-size: 12px; }
+        .chatbot-launcher { position: fixed; bottom: 25px; right: 100px; z-index: 99; background: var(--primary); color: white; width: 65px; height: 65px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 15px 35px rgba(249,115,22,0.3); cursor: pointer; transition: 0.3s; }
+        .chatbot-launcher:hover { transform: scale(1.05); }
     </style>
 </head>
 <body>
+
+<!-- CHAT ASSISTANT WIDGET MODULES -->
+<div class="chatbot-launcher" onclick="toggleChatbot()">
+    <i class="fa-solid fa-robot text-2xl"></i>
+</div>
+
+<div class="chatbot-container" id="chatbotInterface">
+    <div class="chatbot-header">
+        <div class="flex items-center gap-2">
+            <div class="w-2.5 h-2.5 bg-green-500 rounded-full animate-pulse"></div>
+            <span class="font-extrabold text-sm tracking-tight uppercase">AI Food Assistant</span>
+        </div>
+        <button onclick="toggleChatbot()" class="text-white hover:text-orange-400 text-lg"><i class="fa-solid fa-circle-chevron-down"></i></button>
+    </div>
+    <div class="chatbot-messages id-chat-panel no-scrollbar" id="chatArea">
+        <div class="msg-bubble msg-bot">
+            🤖 Hello! I am your AI system concierge. I have full security clearance over order processing pipelines and location settings. How can I help you today?
+        </div>
+    </div>
+    <div class="chatbot-input-area">
+        <input type="text" id="chatInput" placeholder="Ask order status, prices, delivery..." onkeypress="if(event.key === 'Enter') sendChatMessage()">
+        <button onclick="sendChatMessage()" class="text-orange-500 px-3"><i class="fa-solid fa-paper-plane text-lg"></i></button>
+    </div>
+</div>
 
 <a href="cart.php" class="mobile-cart-float" id="cart-container">
     <i class="fa-solid fa-bag-shopping text-2xl"></i>
@@ -159,6 +207,50 @@ $categories = ['Biriyani', 'Fast Food', 'Drinks', 'Snacks', 'Desserts'];
         </div>
     </div>
 </section>
+
+<!-- DYNAMIC RECOMMENDATION MODULE: FAST MOVING ITEMS -->
+<?php if (!empty($fast_moving_products) && empty($search) && empty($cat_filter)): ?>
+<section class="py-12 bg-white">
+    <div class="max-container">
+        <div class="mb-8">
+            <div class="flex items-center gap-2">
+                <span class="bg-red-500 text-white text-[9px] font-black uppercase px-2.5 py-1 rounded-md tracking-wider animate-pulse"><i class="fa-solid fa-fire mr-1"></i> Hot Sellers</span>
+            </div>
+            <h2 class="text-2xl font-black uppercase tracking-tighter mt-2">Customers' Top Choices</h2>
+            <div class="w-12 h-1 bg-red-500 mt-1.5 rounded-full"></div>
+        </div>
+        
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
+            <?php foreach($fast_moving_products as $f_item): 
+                $f_image = "assets/images/products/" . $f_item['food_image'];
+                if(empty($f_item['food_image']) || !file_exists($f_image)) { $f_image = "assets/images/products/default-food.png"; }
+            ?>
+                <div class="bg-gradient-to-b from-orange-50/50 to-white rounded-[2rem] border border-orange-100/70 p-3 flex flex-col relative group transition-all hover:shadow-xl" data-aos="fade-up">
+                    <div class="img-aspect cursor-zoom-in" onclick="openPreview('<?= $f_image ?>')">
+                        <img src="<?= $f_image ?>" class="group-hover:scale-105">
+                        <div class="absolute bottom-3 right-3 bg-white/95 px-3 py-1.5 rounded-xl shadow-sm">
+                            <span class="font-black text-xs text-slate-900">LKR <?= number_format($f_item['price'], 0) ?></span>
+                        </div>
+                    </div>
+                    <div class="p-3 flex flex-col flex-grow">
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="text-[8px] font-black text-red-500 uppercase tracking-wider">Fast Moving 🔥</span>
+                            <span class="text-[8px] font-bold text-slate-400 truncate max-w-[80px]"><?= htmlspecialchars($f_item['shop_name']) ?></span>
+                        </div>
+                        <h3 class="text-sm font-extrabold text-slate-900 mb-1 truncate"><?= htmlspecialchars($f_item['food_name']) ?></h3>
+                        <div class="flex gap-2 mt-4">
+                            <button onclick="addToCart(<?= $f_item['id'] ?>)" class="btn-add-cart !bg-orange-600 hover:!bg-slate-900">Add</button>
+                            <button onclick="handleOrderClick(<?= htmlspecialchars(json_encode($f_item)) ?>)" class="btn-wa">
+                                <i class="fa-brands fa-whatsapp text-lg"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            <?php endforeach; ?>
+        </div>
+    </div>
+</section>
+<?php endif; ?>
 
 <section class="py-16 bg-slate-50 rounded-t-[3rem] lg:rounded-t-[5rem]">
     <div class="max-container">
@@ -277,6 +369,40 @@ AOS.init({ duration: 800, once: true });
 let selectedProduct = null;
 const isLoggedIn = <?= $is_logged_in ?>;
 
+// CHATBOT INTERACTIVE INTERFACE LOGIC
+function toggleChatbot() {
+    const el = document.getElementById('chatbotInterface');
+    el.style.display = (el.style.display === 'flex') ? 'none' : 'flex';
+}
+
+function sendChatMessage() {
+    const input = document.getElementById('chatInput');
+    const msg = input.value.trim();
+    if(!msg) return;
+
+    const chatArea = document.getElementById('chatArea');
+    
+    // Append User Message Bubble
+    chatArea.innerHTML += `<div class="msg-bubble msg-user">${msg}</div>`;
+    input.value = '';
+    chatArea.scrollTop = chatArea.scrollHeight;
+
+    // Post data parameters directly to specialized engine
+    fetch('ai-bot-core.php', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ message: msg })
+    })
+    .then(res => res.json())
+    .then(data => {
+        chatArea.innerHTML += `<div class="msg-bubble msg-bot">🤖 ${data.response}</div>`;
+        chatArea.scrollTop = chatArea.scrollHeight;
+    })
+    .catch(() => {
+        chatArea.innerHTML += `<div class="msg-bubble msg-bot">⚠️ Error communicating with system metrics server.</div>`;
+    });
+}
+
 function openPreview(src) {
     document.getElementById('previewImg').src = src;
     document.getElementById('imagePreviewModal').style.display = 'flex';
@@ -322,7 +448,6 @@ function processQuickOrder() {
     })
     .then(res => res.json()).then(data => {
         if(data.status === 'success') {
-            // PROFESSIONAL WHATSAPP MESSAGE FORMAT
             let msg = `*--- NEW ORDER ---*%0A`;
             msg += `*Site:* <?= $site_name ?>%0A%0A`;
             msg += `👤 *Customer:*%0A`;
@@ -331,8 +456,8 @@ function processQuickOrder() {
             msg += `🗺️ Area: ${areaLabel}%0A%0A`;
             msg += `🛒 *Item Details:*%0A`;
             msg += `• *${selectedProduct.food_name}*%0A`;
-            msg += `  Qty: 1 x LKR ${subtotal.toLocaleString()}%0A`;
-            msg += `  Shop: ${selectedProduct.shop_name || 'Admin'}%0A%0A`;
+            msg += `   Qty: 1 x LKR ${subtotal.toLocaleString()}%0A`;
+            msg += `   Shop: ${selectedProduct.shop_name || 'Admin'}%0A%0A`;
             msg += `💳 *Billing:*%0A`;
             msg += `Subtotal: LKR ${subtotal.toLocaleString()}.00%0A`;
             msg += `Delivery: LKR ${delivery.toLocaleString()}.00%0A`;

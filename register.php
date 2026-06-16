@@ -1,7 +1,7 @@
 <?php
 /**
  * User Registration with Email Verification
- * Authored by Aflal
+ * Authored by Aflal - Optimized & Fixed HTML Mail Strings
  */
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
@@ -52,9 +52,6 @@ if (isset($_POST['register'])) {
         
         if ($stmt->execute([$name, $email, $phone, $password, $v_code])) {
             
-            /** * IMPORTANT: If 'new PHPMailer' fails, use the fully qualified name 
-             * like: new \PHPMailer\PHPMailer\PHPMailer(true)
-             */
             $mail = new PHPMailer(true);
 
             try {
@@ -62,36 +59,51 @@ if (isset($_POST['register'])) {
                 $mail->isSMTP();
                 $mail->Host       = 'smtp.gmail.com'; 
                 $mail->SMTPAuth   = true;
-                $mail->Username   = 'aflaltest@gmail.com'; // CHANGE TO YOUR GMAIL
-                $mail->Password   = 'vvskkurxcywvqipu'; // YOUR 16-DIGIT APP PASSWORD
+                $mail->Username   = 'aflaltest@gmail.com'; 
+                $mail->Password   = 'vvskkurxcywvqipu'; // Your 16-digit App Password remains secure
                 $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
                 $mail->Port       = 587;
 
                 // Recipients
-                $mail->setFrom('your-email@gmail.com', $site_name);
+                $mail->setFrom('aflaltest@gmail.com', $site_name);
                 $mail->addAddress($email, $name);
 
-                // Content
+                // Content Configuration
                 $mail->isHTML(true);
                 $mail->Subject = 'Verify Your Account - ' . $site_name;
 
+                // Absolute verification link construction
                 $verify_link = BASE_URL . "verify.php?code=" . $v_code;
 
+                // HTML Mail Body - Fixed structural breaks using string concatenation escaping
                 $mail->Body = "
-                    <div style='font-family: sans-serif; max-width: 500px; margin: 0 auto; border: 1px solid #eee; border-radius: 20px; overflow: hidden;'>
-                        <div style='background: #111827; padding: 40px; text-align: center;'>
-                            <h2 style='color: white; margin: 0;'>Welcome to $site_name</h2>
+                    <div style=\"font-family: 'Segoe UI', Helvetica, Arial, sans-serif; max-width: 550px; margin: 0 auto; border: 1px solid #f1f5f9; border-radius: 24px; overflow: hidden; background-color: #ffffff; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);\">
+                        <div style=\"background: #111827; padding: 45px 20px; text-align: center;\">
+                            <h2 style=\"color: #ffffff; margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -0.5px;\">Welcome to " . htmlspecialchars($site_name) . "</h2>
                         </div>
-                        <div style='padding: 40px; text-align: center; color: #374151;'>
-                            <p>Hi <b>$name</b>, please click the button below to verify your email.</p>
-                            <a href='$verify_link' style='display: inline-block; background: #ea580c; color: white; padding: 15px 35px; text-decoration: none; border-radius: 12px; font-weight: 800; margin-top: 20px;'>Verify Account</a>
+                        <div style=\"padding: 45px 35px; text-align: center; color: #334155;\">
+                            <p style=\"font-size: 16px; line-height: 1.6; margin: 0 0 25px 0;\">Hi <b>" . htmlspecialchars($name) . "</b>,</p>
+                            <p style=\"font-size: 15px; line-height: 1.6; color: #64748b; margin: 0 0 35px 0;\">Thank you for signing up. Please click the button below to confirm and verify your email address safely.</p>
+                            
+                            <table role=\"presentation\" border=\"0\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin: 0 auto;\">
+                                <tr>
+                                    <td align=\"center\" bgcolor=\"#ea580c\" style=\"border-radius: 14px;\">
+                                        <a href=\"" . $verify_link . "\" target=\"_blank\" style=\"display: inline-block; padding: 16px 40px; font-size: 15px; font-weight: 700; color: #ffffff; text-decoration: none; border-radius: 14px; background-color: #ea580c;\">Verify Account</a>
+                                    </td>
+                                </tr>
+                            </table>
+                            
+                            <p style=\"margin-top: 40px; font-size: 12px; color: #94a3b8; line-height: 1.5;\">
+                                If the button is not working or responsive, copy and paste this link into your address bar:<br>
+                                <a href=\"" . $verify_link . "\" target=\"_blank\" style=\"color: #ea580c; text-decoration: underline;\">" . $verify_link . "</a>
+                            </p>
                         </div>
                     </div>";
 
                 $mail->send();
                 $success = "Registration successful! Please check your email inbox.";
             } catch (Exception $e) {
-                $error = "Account created, but email failed. Error: {$mail->ErrorInfo}";
+                $error = "Account created, but email verification delivery failed. Error: {$mail->ErrorInfo}";
             }
         } else {
             $error = "Registration failed. Please try again.";
@@ -127,7 +139,7 @@ if (isset($_POST['register'])) {
         <div class="w-full md:w-1/2 p-8 md:p-12">
             <div class="mb-8">
                 <?php if($site_logo): ?>
-                    <img src="assets/img/<?= $site_logo ?>" class="h-10 w-auto mb-4" alt="Logo">
+                    <img src="assets/img/<?= htmlspecialchars($site_logo) ?>" class="h-10 w-auto mb-4" alt="Logo">
                 <?php else: ?>
                     <div class="w-12 h-12 bg-slate-900 rounded-xl flex items-center justify-center text-white mb-4">
                         <i class="fa-solid fa-fire-flame-curved"></i>
@@ -138,13 +150,13 @@ if (isset($_POST['register'])) {
 
             <?php if($error): ?>
                 <div class="bg-red-50 text-red-500 p-4 rounded-2xl text-xs font-bold mb-6 flex items-center gap-3 border border-red-100">
-                    <i class="fa-solid fa-circle-exclamation text-lg"></i> <?= $error ?>
+                    <i class="fa-solid fa-circle-exclamation text-lg"></i> <?= htmlspecialchars($error) ?>
                 </div>
             <?php endif; ?>
 
             <?php if($success): ?>
                 <div class="bg-green-50 text-green-600 p-4 rounded-2xl text-xs font-bold mb-6 flex items-center gap-3 border border-green-100">
-                    <i class="fa-solid fa-circle-check text-lg"></i> <?= $success ?>
+                    <i class="fa-solid fa-circle-check text-lg"></i> <?= htmlspecialchars($success) ?>
                 </div>
             <?php endif; ?>
 

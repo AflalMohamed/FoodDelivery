@@ -60,7 +60,11 @@ if (isset($_POST['save_rider'])) {
         } else {
             $stmt = $conn->prepare("INSERT INTO users (name, email, phone, password, role, verification_code, is_verified, status) VALUES (?, ?, ?, ?, 'rider', ?, 0, 'deactive')");
             if ($stmt->execute([$name, $email, $phone, $password, $v_code])) {
-                // Email sending part...
+                
+                // Fetch site settings to populate email context safely
+                $site_settings = $conn->query("SELECT site_name FROM site_settings LIMIT 1")->fetch(PDO::FETCH_ASSOC);
+                $mail_site_name = $site_settings['site_name'] ?? 'TownFood';
+
                 try {
                     $mail = new PHPMailer(true);
                     $mail->isSMTP();
@@ -70,11 +74,41 @@ if (isset($_POST['save_rider'])) {
                     $mail->Password = 'vvskkurxcywvqipu';   
                     $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
                     $mail->Port = 587;
-                    $mail->setFrom('no-reply@townfood.com', 'TownFood Fleet');
+                    
+                    $mail->setFrom('aflaltest@gmail.com', $mail_site_name . ' Fleet');
                     $mail->addAddress($email, $name);
                     $mail->isHTML(true);
-                    $mail->Subject = 'Verify Your Rider Account';
-                    $mail->Body = "<h2>Welcome $name!</h2><p>Admin invited you. Verify here:</p><a href='#'>VERIFY ACCOUNT</a>";
+                    $mail->Subject = 'Invitation to Join ' . $mail_site_name . ' Fleet';
+
+                    // Bulletproof Dynamic Link using our global constant BASE_URL
+                    $verify_link = BASE_URL . "verify.php?code=" . $v_code;
+
+                    // Professional Dashboard Styled Premium Template
+                    $mail->Body = "
+                    <div style=\"font-family: 'Segoe UI', Helvetica, Arial, sans-serif; max-width: 550px; margin: 0 auto; border: 1px solid #f1f5f9; border-radius: 24px; overflow: hidden; background-color: #ffffff;\">
+                        <div style=\"background: #111827; padding: 45px 20px; text-align: center;\">
+                            <span style=\"background: rgba(234, 88, 12, 0.1); color: #ea580c; padding: 8px 16px; border-radius: 30px; font-size: 11px; font-weight: 800; uppercase; tracking-wider;\">FLEET MANAGEMENT INVITE</span>
+                            <h2 style=\"color: #ffffff; margin: 15px 0 0 0; font-size: 24px; font-weight: 800; letter-spacing: -0.5px;\">Welcome to " . htmlspecialchars($mail_site_name) . "</h2>
+                        </div>
+                        <div style=\"padding: 45px 35px; text-align: center; color: #334155;\">
+                            <p style=\"font-size: 16px; line-height: 1.6; margin: 0 0 12px 0; color: #0f172a;\">Hi <b>" . htmlspecialchars($name) . "</b>,</p>
+                            <p style=\"font-size: 14px; line-height: 1.6; color: #64748b; margin: 0 0 30px 0;\">You have been added as a professional driver candidate in our fleet delivery dashboard network. Please verify your account credentials below to get activated on our grid.</p>
+                            
+                            <table role=\"presentation\" border=\"0\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin: 0 auto;\">
+                                <tr>
+                                    <td align=\"center\" bgcolor=\"#111827\" style=\"border-radius: 14px;\">
+                                        <a href=\"" . $verify_link . "\" target=\"_blank\" style=\"display: inline-block; padding: 16px 40px; font-size: 14px; font-weight: 700; color: #ffffff; text-decoration: none; border-radius: 14px; background-color: #111827;\">Activate Rider Account</a>
+                                    </td>
+                                </tr>
+                            </table>
+                            
+                            <p style=\"margin-top: 40px; font-size: 11px; color: #94a3b8; line-height: 1.6;\">
+                                Secure Token routing active. If button tracking is completely disabled on your browser client, copy the absolute URL link destination safely into your web browser dashboard:<br>
+                                <a href=\"" . $verify_link . "\" target=\"_blank\" style=\"color: #ea580c; text-decoration: underline;\">" . $verify_link . "</a>
+                            </p>
+                        </div>
+                    </div>";
+
                     $mail->send();
                     $message = "verification_sent";
                 } catch (Exception $e) { $message = "mail_error"; }
@@ -183,7 +217,7 @@ $riders = $conn->query($query)->fetchAll();
                                         <?php endif; ?>
                                     </td>
                                     <td class="p-6 text-right space-x-2">
-                                        <button onclick="editRider(<?= htmlspecialchars(json_encode($r)) ?>)" class="w-9 h-9 bg-slate-50 text-slate-400 rounded-xl hover:bg-orange-50 hover:text-orange-500 transition-all">
+                                        <button onclick='editRider(<?= json_encode($r) ?>)' class="w-9 h-9 bg-slate-50 text-slate-400 rounded-xl hover:bg-orange-50 hover:text-orange-500 transition-all">
                                             <i class="fa-solid fa-pen-to-square text-xs"></i>
                                         </button>
                                         <button onclick="confirmDelete(<?= $r['id'] ?>)" class="w-9 h-9 bg-slate-50 text-slate-400 rounded-xl hover:bg-red-50 hover:text-red-500 transition-all">
@@ -208,7 +242,7 @@ $riders = $conn->query($query)->fetchAll();
                                     <p class="text-[10px] text-slate-400 font-bold"><?= htmlspecialchars($r['email']) ?></p>
                                 </div>
                                 <div class="flex gap-2">
-                                    <button onclick="editRider(<?= htmlspecialchars(json_encode($r)) ?>)" class="text-slate-300 hover:text-orange-500"><i class="fa-solid fa-pen-to-square"></i></button>
+                                    <button onclick='editRider(<?= json_encode($r) ?>)' class="text-slate-300 hover:text-orange-500"><i class="fa-solid fa-pen-to-square"></i></button>
                                     <button onclick="confirmDelete(<?= $r['id'] ?>)" class="text-slate-300 hover:text-red-500"><i class="fa-solid fa-trash-can"></i></button>
                                 </div>
                             </div>

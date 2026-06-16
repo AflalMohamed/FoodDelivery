@@ -55,3 +55,8 @@ FCA Food Delivery is a high-performance, mobile-responsive web application built
 1. **Clone the Repo:**
    ```bash
    git clone [https://github.com/AflalMohamed/FoodDelivery.git](https://github.com/AflalMohamed/FoodDelivery.git)
+
+   
+## ⚙️ Login Details
+Admin@gmail.com
+1234

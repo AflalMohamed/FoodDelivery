@@ -147,8 +147,8 @@ $google_login_url = "google_auth.php";
                 <div class="absolute top-1/2 w-full h-[1px] bg-slate-100"></div>
             </div>
 
-            <a href="<?= $google_login_url ?>" class="w-full bg-white border border-slate-200 text-slate-700 font-bold py-4 rounded-2xl flex items-center justify-center gap-3 hover:bg-slate-50 transition-all transform active:scale-95 shadow-sm">
-                <img src="https://www.svgrepo.com/show/355037/google.svg" class="w-5 h-5" alt="Google Logo">
+            <a href="<?= $google_login_url ?>" class="w-full bg-white border border-slate-200 text-slate-700 font-bold py-4 rounded-2xl flex items-center justify-center gap-3 hover:bg-slate-50 hover:border-slate-300 transition-all transform active:scale-95 shadow-sm">
+                <i class="fa-brands fa-google text-red-500 text-lg"></i>
                 <span class="text-sm">Google Account</span>
             </a>
 

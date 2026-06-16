@@ -13,6 +13,81 @@ $user_id = $_SESSION['user_id'];
 $filter_month = $_GET['month'] ?? '';
 $filter_year = $_GET['year'] ?? '';
 
+// --- HANDLE ORDER CANCELLATION ENGINE WITH POP-UP SAFARI/CHROME FIX ---
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'cancel_order') {
+    $cancel_order_id = intval($_POST['order_id']);
+    
+    try {
+        // Fetch order details along with individual item details for exact admin receipt breakdown mapping
+        $chk_stmt = $conn->prepare("
+            SELECT o.status, o.total_amount, o.delivery_fee, o.subtotal, o.address, o.phone, u.name as customer_name
+            FROM orders o 
+            LEFT JOIN users u ON o.user_id = u.id
+            WHERE o.id = ? AND o.user_id = ?
+        ");
+        $chk_stmt->execute([$cancel_order_id, $user_id]);
+        $order_to_cancel = $chk_stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if ($order_to_cancel && $order_to_cancel['status'] === 'pending') {
+            
+            // Fetch items inside this order to display inside the text template array loop
+            $items_stmt = $conn->prepare("
+                SELECT oi.quantity, p.food_name 
+                FROM order_items oi
+                INNER JOIN products p ON oi.product_id = p.id
+                WHERE oi.order_id = ?
+            ");
+            $items_stmt->execute([$cancel_order_id]);
+            $order_items_list = $items_stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            $update_stmt = $conn->prepare("UPDATE orders SET status = 'cancelled' WHERE id = ?");
+            if ($update_stmt->execute([$cancel_order_id])) {
+                
+                // Fetch admin_whatsapp dynamically based on your schema structure
+                $meta_stmt = $conn->query("SELECT site_name, admin_whatsapp FROM site_settings LIMIT 1");
+                $meta = $meta_stmt->fetch(PDO::FETCH_ASSOC);
+                
+                $admin_phone = !empty($meta['admin_whatsapp']) ? preg_replace('/[^0-9]/', '', $meta['admin_whatsapp']) : '94771234567';
+                $site_name = $meta['site_name'] ?? 'FCA FOOD';
+                
+                // --- ADMIN ORDER PATTERN BREAKDOWN FOR CANCELLATION ---
+                $wa_msg = "❌ *ORDER CANCELLED* ❌\n\n";
+                $wa_msg .= "An order has been cancelled by the customer. Please review the details below:\n\n";
+                $wa_msg .= "🆔 *Order ID:* #ORD-" . $cancel_order_id . "\n";
+                $wa_msg .= "👤 *Customer:* " . $order_to_cancel['customer_name'] . "\n";
+                $wa_msg .= "📞 *Phone:* " . $order_to_cancel['phone'] . "\n";
+                $wa_msg .= "📍 *Delivery Address:* " . $order_to_cancel['address'] . "\n\n";
+                
+                $wa_msg .= "📦 *Cancelled Items:* \n";
+                foreach ($order_items_list as $item) {
+                    $wa_msg .= " - " . $item['quantity'] . "x " . $item['food_name'] . "\n";
+                }
+                
+                $wa_msg .= "\n----------------------------------\n";
+                $wa_msg .= "💵 *Subtotal:* LKR " . number_format($order_to_cancel['subtotal'], 2) . "\n";
+                $wa_msg .= "🚴 *Delivery Fee:* LKR " . number_format($order_to_cancel['delivery_fee'], 2) . "\n";
+                $wa_msg .= "💰 *Total Amount Saved/Refund:* LKR " . number_format($order_to_cancel['total_amount'], 2) . "\n";
+                $wa_msg .= "----------------------------------\n\n";
+                $wa_msg .= "🛑 *Status:* Cancelled (Dashboard Sync Done)";
+                
+                $encoded_msg = rawurlencode($wa_msg);
+                $whatsapp_url = "https://wa.me/" . $admin_phone . "?text=" . $encoded_msg;
+                
+                // FIXED REDIRECT: window.open moolama popup block aahurathaala direct href-layee redirect panrom
+                echo "<script>
+                    alert('Order #ORD-{$cancel_order_id} has been cancelled! Redirecting to WhatsApp to notify Admin...');
+                    window.location.href = '{$whatsapp_url}';
+                </script>";
+                exit;
+            }
+        } else {
+            echo "<script>alert('Error: You can only cancel orders that are still Pending!');</script>";
+        }
+    } catch (PDOException $e) {
+        echo "<script>alert('Error execution failed: " . addslashes($e->getMessage()) . "');</script>";
+    }
+}
+
 try {
     // 1. Fetch distinct months and years for the filter dropdown
     $date_query = "SELECT DISTINCT YEAR(order_date) as y, MONTH(order_date) as m FROM orders WHERE user_id = ? ORDER BY y DESC, m DESC";
@@ -174,11 +249,18 @@ include 'includes/header.php';
                     </div>
                     <div class="text-right">
                         <p class="font-black text-slate-900">LKR <?= number_format($order['total_amount'], 0) ?></p>
-                        <span class="text-[9px] bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full font-bold uppercase"><?= $order['status'] ?></span>
+                        
+                        <?php if($order['status'] === 'cancelled'): ?>
+                            <span class="text-[9px] bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-bold uppercase">Cancelled</span>
+                        <?php else: ?>
+                            <span class="text-[9px] bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full font-bold uppercase"><?= $order['status'] ?></span>
+                        <?php endif; ?>
                     </div>
                 </div>
 
                 <div class="order-body px-4 pb-4">
+                    
+                    <?php if($order['status'] !== 'cancelled'): ?>
                     <div class="mt-4 mb-8 px-4">
                         <div class="flex justify-between relative">
                             <div class="absolute top-3 left-0 right-0 h-0.5 bg-gray-100"></div>
@@ -193,13 +275,28 @@ include 'includes/header.php';
                             <?php endforeach; ?>
                         </div>
                     </div>
+                    <?php else: ?>
+                    <div class="mt-4 mb-4 bg-red-50 border border-red-100 text-red-700 rounded-xl p-4 text-xs font-bold text-center">
+                        ⚠️ This order has been cancelled and removed from the active delivery pipeline.
+                    </div>
+                    <?php endif; ?>
 
                     <a href="order-details.php?id=<?= $order['order_id'] ?>" 
                        class="block w-full text-center bg-slate-900 text-white font-bold py-4 rounded-2xl hover:bg-orange-600 transition-all text-sm mb-3 shadow-lg shadow-slate-200">
-                       VIEW FULL RECEIPT
+                        VIEW FULL RECEIPT
                     </a>
 
-                    <?php if ($order['rider_id'] && $order['status'] != 'delivered'): ?>
+                    <?php if ($order['status'] === 'pending'): ?>
+                        <form method="POST" onsubmit="return confirm('Are you sure you want to cancel this order? It will instantly update the admin dashboard and sync with WhatsApp.');" class="mb-3">
+                            <input type="hidden" name="action" value="cancel_order">
+                            <input type="hidden" name="order_id" value="<?= $order['order_id'] ?>">
+                            <button type="submit" class="w-full text-center bg-red-600 text-white font-black py-4 rounded-2xl hover:bg-red-700 transition-all text-sm uppercase tracking-wider shadow-lg shadow-red-100">
+                                <i class="fa-solid fa-rectangle-xmark mr-1"></i> Cancel Order
+                            </button>
+                        </form>
+                    <?php endif; ?>
+
+                    <?php if ($order['rider_id'] && $order['status'] != 'delivered' && $order['status'] != 'cancelled'): ?>
                     <div class="flex justify-between items-center bg-slate-50 p-4 rounded-2xl border border-gray-100">
                         <div class="flex items-center gap-3">
                             <div class="w-10 h-10 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center"><i class="fa-solid fa-motorcycle"></i></div>

@@ -19,8 +19,12 @@ try {
     $rider_info->execute([$rider_id]);
     $rider = $rider_info->fetch(PDO::FETCH_ASSOC);
 
-    // Search Query Logic
-    $query = "SELECT o.*, u.name as db_customer_name 
+    // Search Query Logic - FIXED to aggregate food items from relational schema
+    $query = "SELECT o.*, u.name as db_customer_name,
+                     (SELECT GROUP_CONCAT(CONCAT(oi.quantity, 'x ', p.food_name) SEPARATOR ', ') 
+                      FROM order_items oi 
+                      INNER JOIN products p ON oi.product_id = p.id 
+                      WHERE oi.order_id = o.id) as ordered_items
               FROM orders o 
               LEFT JOIN users u ON o.user_id = u.id 
               WHERE o.rider_id = ? AND o.status = 'delivered'";
@@ -103,7 +107,7 @@ try {
                         </div>
                     </div>
 
-                    <div class="mb-5 flex items-center gap-4 bg-slate-50 p-4 rounded-3xl">
+                    <div class="mb-4 flex items-center gap-4 bg-slate-50 p-4 rounded-3xl">
                         <div class="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-orange-500 shadow-md border border-slate-100">
                             <i class="fa-solid fa-user-check text-xl"></i>
                         </div>
@@ -111,6 +115,15 @@ try {
                             <p class="text-[8px] font-black text-slate-400 uppercase leading-none mb-1">Customer</p>
                             <h3 class="text-sm font-bold text-slate-800 truncate"><?= htmlspecialchars($h['db_customer_name'] ?? 'Guest') ?></h3>
                         </div>
+                    </div>
+
+                    <div class="bg-slate-50/60 p-4 rounded-2xl border border-slate-100 mb-4">
+                        <p class="text-[9px] font-black text-slate-400 uppercase mb-2 tracking-wider">
+                            <i class="fa-solid fa-utensils mr-1 text-orange-500"></i> Delivered Items
+                        </p>
+                        <p class="text-xs font-bold text-slate-700 leading-relaxed">
+                            <?= !empty($h['ordered_items']) ? htmlspecialchars($h['ordered_items']) : '<span class="text-slate-400 italic">No item logs</span>' ?>
+                        </p>
                     </div>
 
                     <div class="space-y-3 mb-6 px-2">

@@ -38,7 +38,7 @@ try {
                 <div class="inline-flex items-center gap-2 px-3 py-1.5 bg-white/5 border border-white/10 rounded-full">
                     <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span>
                     <span class="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">
-                        Developed by <a href="https://www.aflal.site" target="_blank" class="text-white hover:text-orange-500 transition">Aflal</a>
+                        Developed by <a href="https://www.aflal.site" target="_blank" class="text-white hover:text-orange-500 transition"> &nbsp;Aflal</a>
                     </span>
                 </div>
 
